@@ -1,0 +1,6 @@
+{
+    "sketch": "encoder\\encoder.ino",
+    "board": "teensy:avr:teensy40",
+    "port": "COM26",
+    "configuration": "usb=serial,speed=24,opt=o2std,keys=en-us"
+}
