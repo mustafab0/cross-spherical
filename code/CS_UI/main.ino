@@ -1,5 +1,6 @@
 #include <TMC2208Stepper.h>
 #include <TMC2208Stepper_REGDEFS.h>
+#include <math.h>
 
 TMC2208Stepper driver1 = TMC2208Stepper(&Serial1);
 TMC2208Stepper driver2 = TMC2208Stepper(&Serial2);
@@ -26,15 +27,19 @@ TMC2208Stepper driver4 = TMC2208Stepper(&Serial4);
 
 int incomingData = -1; // for incoming serial data
 int baudRate = 115200;
-int speedR = 80;
-int speedP = 80;
+int speedR = 1100;
+int speedP = 250;
 
 int pinArray[] = {ac1_m1_en, ac1_m2_en, ac2_m1_en, ac2_m2_en, ac1_m1, ac1_m2, ac1_m2, ac2_m2};
 int numOPPins = sizeof(pinArray) / sizeof(pinArray[0]);
 
-int poseArray[] = {0, 0, 0, 0};
+const float beta = 3.14; 
+
+float poseArray[] = {0, 0, 0, 0};
 
 int poseCounter[] = {0, 0, 0, 0};
+
+float targetRPY[] = {0, 0, 0};
 
 void setup() {
 
@@ -105,6 +110,7 @@ void setup() {
 
 bool newData = false;
 bool newPose = false;
+bool newRPY = false;
 
 long unsigned int pt1 = micros();
 long unsigned int pt2 = micros();
@@ -167,6 +173,7 @@ void loop() {
 
 // ------------------------------------------------------------------------------
 
+
 void set_actuator(int enable_pin, bool state){
   // enable pin number
   // 1 disable actuator
@@ -188,8 +195,24 @@ void waitForSerialData() {
 void processIncomingData() {
   int option = Serial.parseInt();
   switch (option) {
-
+    
     case 1:
+      Serial.println("Enter target pose of the CS gear in R, P, Y format in degrees.");
+      Serial.println("Eneter Roll angle:");
+      waitForSerialData();
+      targetRPY[0] = deg2rad(Serial.parseFloat());
+      Serial.println("Eneter Pitch angle:");
+      waitForSerialData();
+      targetRPY[1] = deg2rad(Serial.parseFloat());
+      Serial.println("Eneter Yaw angle:");
+      waitForSerialData();
+      targetRPY[2] = deg2rad(Serial.parseFloat());
+      
+      newRPY = true;
+      setTPose();
+
+      break;
+    case 2:
       Serial.println("Enter A1_P, A1_R, A2_P, A2_R in degrees.");
       Serial.println("Enter Actuator 1 pitch angle");
       waitForSerialData();
@@ -207,17 +230,17 @@ void processIncomingData() {
 
       break;
 
-    case 2:
+    case 3:
       setMotorSpeed("roll", speedR);
       break;
 
-    case 3:
+    case 4:
       setMotorSpeed("pitch", speedP);
       break;
 
-    case 4:
-      speedR = 80;
-      speedP = 80;
+    case 5:
+      speedR = 1100;
+      speedP = 250;
       for(int i = 0; i < 4; i++){
         set_actuator(pinArray[i], 0);
       }
@@ -235,10 +258,11 @@ void processIncomingData() {
 
 void displayMenu() {
   Serial.println("---------------------------------");
-  Serial.println("Press 1 to set target position");
-  Serial.println("Press 2 to set Roll motor speed");
-  Serial.println("Press 3 to set Pitch motor speed");
-  Serial.println("Press 4 to reset");
+  Serial.println("Press 1 to set target CS gear pose");
+  Serial.println("Press 2 to set Roll and Pitch motor angles. ** ONLY WHEN USING SINGLE ACTUATOR!!! **");
+  Serial.println("Press 3 to set Roll motor speed");
+  Serial.println("Press 4 to set Pitch motor speed");
+  Serial.println("Press 5 to reset speeds and disable motor drivers");
   Serial.println();
   Serial.println();
 }
@@ -246,8 +270,25 @@ void displayMenu() {
 void processMenuOption() {
   int option = Serial.parseInt();
   switch (option) {
+     
     case 1:
-      Serial.println("Enter Motor angles in degrees.");
+      Serial.println("Enter target pose of the CS gear in R, P, Y format in degrees.");
+      Serial.println("Eneter Roll angle:");
+      waitForSerialData();
+      targetRPY[0] = deg2rad(Serial.parseFloat());
+      Serial.println("Eneter Pitch angle:");
+      waitForSerialData();
+      targetRPY[1] = deg2rad(Serial.parseFloat());
+      Serial.println("Eneter Yaw angle:");
+      waitForSerialData();
+      targetRPY[2] = deg2rad(Serial.parseFloat());
+      
+      newRPY = true;
+      setTPose();
+
+      break;
+    case 2:
+      Serial.println("Enter A1_P, A1_R, A2_P, A2_R in degrees.");
       Serial.println("Enter Actuator 1 pitch angle");
       waitForSerialData();
       poseArray[0] = Serial.parseInt();
@@ -261,19 +302,20 @@ void processMenuOption() {
       waitForSerialData();
       poseArray[3] = Serial.parseInt();
       setTPose();
-      break;
 
-    case 2:
-      setMotorSpeed("roll", speedR);
       break;
 
     case 3:
-      setMotorSpeed("pitch", speedP);
+      setMotorSpeed("roll", speedR);
       break;
 
     case 4:
-      speedR = 80;
-      speedP = 80;
+      setMotorSpeed("pitch", speedP);
+      break;
+
+    case 5:
+      speedR = 1100;
+      speedP = 250;
       for(int i = 0; i < 4; i++){
         set_actuator(pinArray[i], 0);
       }
@@ -299,9 +341,41 @@ void setMotorSpeed(const char* motorName, int& speed) {
   Serial.println(speed);
 }
 
+float deg2rad(float degrees){
+  return (3.14/180)*degrees;
+}
+
+float rad2deg(float radians){
+  return (180/3.14)*radians;
+}
+
+void computeIK(float targetRPY[]){
+  
+  Serial.println("Computing inverse kinematics");
+
+  float thetaA1 = atan2(((cos(targetRPY[0]) * sin(targetRPY[2])) + (cos(targetRPY[2]) * sin(targetRPY[1]) * sin(targetRPY[0]))), ((cos(targetRPY[0]) * cos(targetRPY[2]) * sin(targetRPY[1])) - (sin(targetRPY[0]) * sin(targetRPY[2]))));
+  Serial.println("...");
+  float thetaA2 = acos((cos(targetRPY[1]) * cos(targetRPY[2])));
+  Serial.println("...");
+  float thetaB1 = -1 * atan2(((cos(targetRPY[2] * cos(beta) * cos(targetRPY[0]))) + (sin(targetRPY[2])*((sin(beta) * cos(targetRPY[2])) - (cos(beta) * sin(targetRPY[1]) * sin(targetRPY[1]))))) , ((cos(targetRPY[0]) * sin(targetRPY[1]) * sin(targetRPY[2])) + (cos(targetRPY[2]) * sin(targetRPY[0]))));
+  Serial.println("...");
+  float thetaB2 = acos((cos(targetRPY[2]) * cos(targetRPY[0]) * sin(beta)) - (sin(targetRPY[2]) * ((cos(beta) * cos(targetRPY[1])) + (sin(beta) * sin(targetRPY[1]) * sin(targetRPY[0])))));
+
+  Serial.println("Finished");
+
+  poseArray[0] = -1 * 2 * rad2deg(thetaA2);
+  poseArray[1] = rad2deg(thetaA1);
+  poseArray[2] = -1 * 2 * rad2deg(thetaB2);
+  poseArray[3] = rad2deg(thetaB1);
+}
+
 void setTPose() {
   newPose = true;
-  // Implement the logic to set the T-pose
+
+  if(newRPY){
+    computeIK(targetRPY);
+    newRPY = false;
+  }
 
   for(int i = 0; i < 4; i++){
     poseCounter[i] = 17.8 * poseArray[i];
