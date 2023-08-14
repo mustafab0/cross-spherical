@@ -72,32 +72,37 @@ void setup() {
   driver4.rms_current(500);      // Set driver current 500mA
   driver4.toff(2);               // Enable driver in software
   
-  uint32_t data = 0;
-  Serial.print("DRV_STATUS1 = 0x");
-  driver1.DRV_STATUS(&data);
-  Serial.println(data, HEX);
-  
-  data = 0;
-  Serial.print("DRV_STATUS2 = 0x");
-  driver2.DRV_STATUS(&data);
-  Serial.println(data, HEX);
-  
-  data = 0;
-  Serial.print("DRV_STATUS3 = 0x");
-  driver3.DRV_STATUS(&data);
-  Serial.println(data, HEX);
+ // Read and print driver status registers for all 4 drivers
+uint32_t data = 0;
 
-  data = 0;
-  Serial.print("DRV_STATUS4 = 0x");
-  driver4.DRV_STATUS(&data);
-  Serial.println(data, HEX);
+Serial.print("DRV_STATUS1 = 0x");
+driver1.DRV_STATUS(&data);
+Serial.println(data, HEX);
 
-    // Prepare pins
+data = 0;
+Serial.print("DRV_STATUS2 = 0x");
+driver2.DRV_STATUS(&data);
+Serial.println(data, HEX);
+
+data = 0;
+Serial.print("DRV_STATUS3 = 0x");
+driver3.DRV_STATUS(&data);
+Serial.println(data, HEX);
+
+data = 0;
+Serial.print("DRV_STATUS4 = 0x");
+driver4.DRV_STATUS(&data);
+Serial.println(data, HEX);
+
+ // Prepare pins
   for (int i = 0; i < numOPPins; i++) {
     pinMode(pinArray[i],OUTPUT);
   }
 
+  // Wait for serial data
   waitForSerialData();
+
+  // Print a starting message
   Serial.println("Starting");
 }
 
