@@ -2,15 +2,13 @@
 #include <ArduinoEigenDense.h>
 #include <ArduinoEigenSparse.h>
 
-
-#include <Slerp.h>
-#include <Quaternion.h>
+#define DEG2RAD 0.0174532925
+#define RAD2DEG 57.2957795
 
 Eigen::Matrix3d euler2rotm(const Eigen::Vector3d& euler_angs) {
-    double roll = euler_angs[0] * PI / 180.0;
-    double pitch = euler_angs[1] * PI / 180.0;
-    double yaw = euler_angs[2] * PI / 180.0;
-
+    double roll = euler_angs(0) * DEG2RAD;
+    double pitch = euler_angs(1) * DEG2RAD;
+    double yaw = euler_angs(2) * DEG2RAD;
     Eigen::Matrix3d R_x;
     R_x << 1, 0, 0,
            0, cos(roll), -sin(roll),
@@ -31,70 +29,242 @@ Eigen::Matrix3d euler2rotm(const Eigen::Vector3d& euler_angs) {
     return R;
 }
 
-Eigen::MatrixX3d interpolate_rpy(const Eigen::Vector3d& start_rpy, const Eigen::Vector3d& end_rpy, int num_points) {
-    Eigen::Vector3d start_end[2] = { start_rpy, end_rpy };
+struct Quaternion {
+    double x;
+    double y;
+    double z;
+    double w;
+};
 
-    // Create Slerp object and perform interpolation
-    Quaterniond q_start_end[2];
-    for (int i = 0; i < 2; ++i) {
-        AngleAxisd angle_axis(start_end[i][0] * PI / 180.0, Vector3d::UnitX());
-        angle_axis *= AngleAxisd(start_end[i][1] * PI / 180.0, Vector3d::UnitY());
-        angle_axis *= AngleAxisd(start_end[i][2] * PI / 180.0, Vector3d::UnitZ());
-        q_start_end[i] = angle_axis;
-    }
+struct Quaternion to_quaternion(const Eigen::Vector3d& rpy) {
 
-    Quaterniond q_interp;
-    Eigen::MatrixX3d interpolated_rotations(num_points, 3);
-    for (int i = 0; i < num_points; ++i) {
-        double t = static_cast<double>(i) / (num_points - 1);
-        q_interp = q_start_end[0].slerp(t, q_start_end[1]);
-        Eigen::Vector3d eul_interp = q_interp.toRotationMatrix().eulerAngles(0, 1, 2) * 180.0 / PI;
-        interpolated_rotations.row(i) = eul_interp;
-    }
+    double roll  = rpy(0) * DEG2RAD;
+    double pitch = rpy(1) * DEG2RAD;
+    double yaw   = rpy(2) * DEG2RAD;
 
-    return interpolated_rotations;
+    double cr = std::cos(roll * 0.5);
+    double sr = std::sin(roll * 0.5);
+    double cp = std::cos(pitch * 0.5);
+    double sp = std::sin(pitch * 0.5);
+    double cy = std::cos(yaw * 0.5);
+    double sy = std::sin(yaw * 0.5);
+
+    struct Quaternion q = {
+        sr * cp * cy - cr * sp * sy,
+        cr * sp * cy + sr * cp * sy,
+        cr * cp * sy - sr * sp * cy,
+        cr * cp * cy + sr * sp * sy
+    };
+
+    return q;
 }
 
-Eigen::Vector3d z_ax(0, 0, 1);
-Eigen::Vector3d y_ax(0, 1, 0);
-Eigen::Vector3d x_ax(1, 0, 0);
+Eigen::Vector3d to_euler_angles(const struct Quaternion& q) {
+    Eigen::Vector3d angles;
 
-Eigen::Vector3d rpy(45, 120, 270);
+    // roll (x-axis rotation)
+    double sinr_cosp = 2 * (q.w * q.x + q.y * q.z);
+    double cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y);
+    angles(0) = std::atan2(sinr_cosp, cosr_cosp);
+
+    // pitch (y-axis rotation)
+    double sinp = std::sqrt(1 + 2 * (q.w * q.y - q.x * q.z));
+    double cosp = std::sqrt(1 - 2 * (q.w * q.y - q.x * q.z));
+    angles(1) = 2 * std::atan2(sinp, cosp) - M_PI / 2;
+
+    // yaw (z-axis rotation)
+    double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
+    double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+    angles(2) = std::atan2(siny_cosp, cosy_cosp);
+
+    // Convert to degrees
+    angles(0) = angles(0) * RAD2DEG;
+    angles(1) = angles(1) * RAD2DEG;
+    angles(2) = angles(2)* RAD2DEG;
+
+    return angles;
+}
+
+struct Quaternion q_slerp(const struct Quaternion& qstart, const struct Quaternion& qend, double t)
+{
+	// Compute the dot product between the two quaternions
+	Eigen::Vector4d q0(qstart.x, qstart.y, qstart.z, qstart.w);
+	Eigen::Vector4d q1(qend.x, qend.y, qend.z, qend.w);
+	
+	double dot = q0.transpose() * q1;
+	
+	const double DOT_THRESHOLD = 0.9995;
+	if (dot > DOT_THRESHOLD)
+	{
+		// Linearly interpolate and normalize if inputs are too close
+		Eigen::Vector4d result = q0 + t * (q1 - q0);
+		result /= result.norm();
+    struct Quaternion q_result= {
+        result(0),
+        result(1),
+        result(2),
+        result(3)
+    };
+		return q_result;
+	}
+	
+	// Clamp the dot product to stay within the domain of acos()
+	dot = std::max(-1.0, std::min(1.0, dot));
+
+	// Compute theta_0 and theta
+	double theta_0 = std::acos(dot);
+	double theta = theta_0 * t;
+
+ 	// Compute intermediate quaternion v2
+	Eigen::Vector4d v2 = q1 - q0 * dot;
+	v2 /= v2.norm();
+	
+	// Slerp interpolation
+	Eigen::Vector4d result = q0 * std::cos(theta) + v2 * std::sin(theta);
+
+  struct Quaternion q_result= {
+        result(0),
+        result(1),
+        result(2),
+        result(3)
+    };
+	
+	return q_result;
+}
+
+struct Quaternion q_mult(const struct Quaternion& q1, const struct Quaternion& q2)
+{
+	struct Quaternion q_result;
+	q_result.x = q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y;
+	q_result.y = q1.w * q2.y + q1.y * q2.w + q1.z * q2.x - q1.x * q2.z;
+	q_result.z = q1.w * q2.z + q1.z * q2.w + q1.x * q2.y - q1.y * q2.x;
+	q_result.w = q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z;
+
+	//normalize quaternion
+	float q_result_norm = sqrt(q_result.x*q_result.x + q_result.y*q_result.y + q_result.z*q_result.z + q_result.w*q_result.w);
+	q_result.x = q_result.x / q_result_norm;
+	q_result.y = q_result.y / q_result_norm;
+	q_result.z = q_result.z / q_result_norm;
+	q_result.w = q_result.w / q_result_norm;
+
+	return q_result;
+}
 
 Eigen::Vector3d start_rpy(0, 0, 0);
-Eigen::Vector3d end_rpy = rpy;
-int num_points = 10;
+Eigen::Vector3d end_rpy;
 
-Eigen::MatrixX3d interp_rot = interpolate_rpy(start_rpy, end_rpy, num_points);
-
-std::vector<Eigen::Vector3d> euls_list;
-euls_list.push_back(x_ax);
-euls_list.push_back(y_ax);
-euls_list.push_back(z_ax);
+Eigen::Vector3d p_vec(0,0,1);
 
 void setup() {
-    Serial.begin(115200);
-    while (!Serial) {
-        // Wait for Serial connection
-    }
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+
+  delay(500);
+
+  Serial.println("Trajectory planning");
+  
 }
 
 void loop() {
-    for (int i = 0; i < num_points; ++i) {
-        Eigen::Matrix3d rotation_matrix = euler2rotm(interp_rot.row(i));
-        Eigen::Vector3d rotated_vector = rotation_matrix * z_ax;
-        euls_list.push_back(rotated_vector);
+  
+  //Ask user for end euler angles
+  Serial.println("Enter end euler angles (roll, pitch, yaw):");
+  Serial.print("Roll: ");
+  //Clear the input buffer
+  while (Serial.available()) {
+      Serial.read();
+  }
+  while (!Serial.available());
+  end_rpy(0) = Serial.parseFloat();
+  Serial.println(end_rpy(0));
+  //Clear the input buffer
+  while (Serial.available()) {
+      Serial.read();
+  }
+  Serial.print("Pitch: ");
+  while (!Serial.available());
+  end_rpy(1) = Serial.parseFloat();
+  Serial.println(end_rpy(1));
+  //Clear the input buffer
+  while (Serial.available()) {
+      Serial.read();
+  }
+  Serial.print("Yaw: ");
+  while (!Serial.available());
+  end_rpy(2) = Serial.parseFloat();
+  Serial.println(end_rpy(2));
 
-        // Print rotated vector values
-        Serial.print("Rotated Vector (");
-        Serial.print(rotated_vector[0]);
-        Serial.print(", ");
-        Serial.print(rotated_vector[1]);
-        Serial.print(", ");
-        Serial.print(rotated_vector[2]);
-        Serial.println(")");
+  delay(500);
+
+
+  Quaternion start_quat, end_quat;
+
+  start_quat = to_quaternion(start_rpy);
+  end_quat = to_quaternion(end_rpy);
+  end_quat = q_mult(end_quat, start_quat);
+  end_rpy = to_euler_angles(end_quat);
+
+   // Print start and end euler angles
+  Serial.print("Start euler angles: ");
+  Serial.print(start_rpy(0));
+  Serial.print(", ");
+  Serial.print(start_rpy(1));
+  Serial.print(", ");
+  Serial.println(start_rpy(2));
+  Serial.print("End euler angles: ");
+  Serial.print(end_rpy(0));
+  Serial.print(", ");
+  Serial.print(end_rpy(1));
+  Serial.print(", ");
+  Serial.println(end_rpy(2));
+
+
+  Quaternion interpolated_quat;
+  Eigen::Vector3d interpolated_rpy;
+  
+  std::vector<Eigen::Vector3d> vec_list;
+
+  
+  int num_points = 10;
+  for (int i = 0; i <= num_points; i++)
+    {
+      double t = i / (double) num_points;
+      interpolated_quat = q_slerp(start_quat, end_quat, t);
+      interpolated_rpy = to_euler_angles(interpolated_quat);
+      // vec_list.push_back(euler2rotm(interpolated_rpy)*p_vec);   //Uncomment to record the pointer for graphing
+      vec_list.push_back(interpolated_rpy);                      //Uncomment to record RPY angles for Inverse Kinematics 
+        
     }
 
-    // Stop further execution
-    while (1) {}
+    // Print out the list of vectors
+    for (int i = 0; i < (int) vec_list.size(); i++)
+    {
+        Serial.print("[");
+        Serial.print(vec_list[i](0),4);
+        Serial.print(", ");
+        Serial.print(vec_list[i](1),4);
+        Serial.print(", ");
+        Serial.print(vec_list[i](2),4);
+        Serial.println("],");
+    }
+
+    start_rpy = end_rpy;
+
+    // Ask if want to continue
+    Serial.println("Continue? (y/n)");
+    //Clear the input buffer
+    while (Serial.available()) {
+        Serial.read();
+    }
+    while (!Serial.available());
+    char c = Serial.read();
+
+    if (c != 'y'){
+      Serial.print("End");
+      while(1){} // Wait forever
+    }
+    else{
+      vec_list.clear();
+    }
+    
 }

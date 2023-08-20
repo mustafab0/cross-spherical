@@ -1,5 +1,5 @@
 {
-    "sketch": "code\\trajectory\\trajectory.ino",
+    "sketch": "code\\testing\\testing.ino",
     "configuration": "usb=serial,speed=600,opt=o2std,keys=en-us",
     "board": "teensy:avr:teensy40",
     "port": "COM33",

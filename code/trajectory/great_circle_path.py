@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+np.set_printoptions(precision=4)
 
 def plot_vector(unit_vectors):
     # Create a figure and a 3D subplot
@@ -55,7 +55,6 @@ def plot_vector(unit_vectors):
 
     return ax
 
-
 def euler2rotm(euler_angs):
     roll = np.deg2rad(euler_angs[0])
     pitch = np.deg2rad(euler_angs[1])
@@ -89,16 +88,16 @@ class Quaternion:
 
 def to_quaternion(rpy):
     # rpy = np.deg2rad(rpy)
-    rpy.roll = np.deg2rad(rpy.roll)
-    rpy.pitch = np.deg2rad(rpy.pitch)
-    rpy.yaw = np.deg2rad(rpy.yaw)
+    roll = np.deg2rad(rpy.roll)
+    pitch = np.deg2rad(rpy.pitch)
+    yaw = np.deg2rad(rpy.yaw)
 
-    cr = np.cos(rpy.roll * 0.5)
-    sr = np.sin(rpy.roll * 0.5)
-    cp = np.cos(rpy.pitch * 0.5)
-    sp = np.sin(rpy.pitch * 0.5)
-    cy = np.cos(rpy.yaw * 0.5)
-    sy = np.sin(rpy.yaw * 0.5)
+    cr = np.cos(roll * 0.5)
+    sr = np.sin(roll * 0.5)
+    cp = np.cos(pitch * 0.5)
+    sp = np.sin(pitch * 0.5)
+    cy = np.cos(yaw * 0.5)
+    sy = np.sin(yaw * 0.5)
 
     q = Quaternion(
         sr * cp * cy - cr * sp * sy,
@@ -146,6 +145,7 @@ def quaternion_slerp(qstart, qend, t):
     q1 = np.array([qend.x, qend.y, qend.z, qend.w])
 
     dot = np.dot(q0, q1)
+
     
     DOT_THRESHOLD = 0.9995
     if dot > DOT_THRESHOLD:
@@ -154,9 +154,10 @@ def quaternion_slerp(qstart, qend, t):
         result /= np.linalg.norm(result)
         return result
     
+
     # Clamp the dot product to stay within the domain of acos()
     dot = np.clip(dot, -1, 1)
-    
+
     # Compute theta_0 and theta
     theta_0 = np.arccos(dot)
     theta = theta_0 * t
@@ -172,48 +173,83 @@ def quaternion_slerp(qstart, qend, t):
     
     return q_result
 
+def q_mult(q1, q2):
+    # w1, x1, y1, z1 = q1
+    # w2, x2, y2, z2 = q2
+    x = q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y
+    y = q1.w * q2.y + q1.y * q2.w + q1.z * q2.x - q1.x * q2.z
+    z = q1.w * q2.z + q1.z * q2.w + q1.x * q2.y - q1.y * q2.x
+    w = q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
+
+    q_result = Quaternion(x,y,z,w)
+    
+    #normalize quaternion
+    q_result_norm = np.sqrt(q_result.x**2 + q_result.y**2 + q_result.z**2 + q_result.w**2)
+    q_result.x = q_result.x / q_result_norm
+    q_result.y = q_result.y / q_result_norm
+    q_result.z = q_result.z / q_result_norm
+    q_result.w = q_result.w / q_result_norm
+
+    return q_result
+
 z_ax = np.array([0, 0, 1])
 y_ax = np.array([0, 1, 0])
 x_ax = np.array([1, 0, 0]) 
 
-rpy = np.array([62, 45, 50])  #destination RPY angles  ###Change values here###
+rpy = np.array([80, 150, 50])  #destination RPY angles  ###Change values here###
 plt_vec = z_ax #initial vector for plot
 
 # Define start and end RPY angles (in degrees)
 start_rpy = EulerAngles(0, 0, 0)
-end_rpy = EulerAngles(rpy[0], rpy[1], rpy[2])
+# end_rpy = EulerAngles(rpy[0], rpy[1], rpy[2])
 
-cont = 'Y'
+cont = 'y'
 
-while cont == 'Y':
+while cont == 'y':
+    rpy = np.array([float(input("Enter roll: ")), float(input("Enter pitch: ")), float(input("Enter yaw: "))])
+    print("input rpy: ", rpy)
+    end_rpy = EulerAngles(rpy[0], rpy[1], rpy[2])
+    # end_rpy = EulerAngles(start_rpy.roll + rpy[0], start_rpy.pitch + rpy[1], start_rpy.yaw + rpy[2])
     start_quat = to_quaternion(start_rpy)
     end_quat = to_quaternion(end_rpy)
+    end_quat = q_mult(end_quat, start_quat)
+    end_rpy = to_euler_angles(end_quat)
 
+    #print start and end euler angles
+    print("Start RPY angles: ", start_rpy.roll, start_rpy.pitch, start_rpy.yaw)
+    print("End RPY angles: ", end_rpy.roll, end_rpy.pitch, end_rpy.yaw)
+
+    # #print start and end quaternions
+    # print("Start Quaternion: ", start_quat.x, start_quat.y, start_quat.z, start_quat.w)
+    # print("End Quaternion: ", end_quat.x, end_quat.y, end_quat.z, end_quat.w)
 
     euls_list = [x_ax, y_ax, z_ax]
+    rpy_list = []
     # Perform Slerp interpolation for different values of t
     num_points = 10
     for i in range(num_points + 1):
         t = i / num_points
         interpolated_quat = quaternion_slerp(start_quat, end_quat, t)
         interpolated_rpy = to_euler_angles(interpolated_quat)
-        # print(f"t = {t:.2f}, Interpolated RPY angles: {interpolated_rpy}")
-        euls_list.append(euler2rotm(np.array([interpolated_rpy.roll, interpolated_rpy.pitch, interpolated_rpy.yaw]))@plt_vec)
+        rpy_list.append(interpolated_rpy)
+        euls_list.append(euler2rotm(np.array([interpolated_rpy.roll , interpolated_rpy.pitch , interpolated_rpy.yaw]))@z_ax)
 
-    ax = plot_vector(euls_list)
+    print("Vector list: ")
+    for vec in euls_list:
+        print("[",vec[0],",",vec[1],",",vec[2],"]",",")
+    
+    print("RPY angles: ")
+    for euls in rpy_list:
+        print("[",euls.roll,",",euls.pitch,",",euls.yaw,"]",",")
+    
     start_rpy = end_rpy
     plt_vec = euls_list[-1]
-    cont = input("Continue? (Y/N): ")
-    if cont == 'Y':
-        rpy = np.array([float(input("Enter roll: ")), float(input("Enter pitch: ")), float(input("Enter yaw: "))])
-        end_rpy = EulerAngles(rpy[0], rpy[1], rpy[2])
-    
-    #close the plot window
-    # plt.close('all')
 
-
+    print(plt_vec)
+    ax = plot_vector(euls_list)
+    cont = input("Continue? (y/n): ")
     
 
-
-
-
+    
+        
+    
