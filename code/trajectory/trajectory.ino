@@ -150,9 +150,75 @@ struct Quaternion q_mult(const struct Quaternion& q1, const struct Quaternion& q
 	return q_result;
 }
 
-Eigen::Vector3d start_rpy(0, 0, 0);
-Eigen::Vector3d end_rpy;
 
+void get_euler_angles(int i, Eigen::Vector3d &end_rpy) {
+
+  Serial.println("Enter euler angles (roll, pitch, yaw):");
+
+  switch (i) {
+      case 0:
+          Serial.print("Roll: ");
+          break;
+      case 1:
+          Serial.print("Pitch: ");
+          break;
+      case 2:
+          Serial.print("Yaw: ");
+          break;
+      default:
+          break;
+    }
+  //Clear the input buffer
+  while (Serial.available()) {
+      Serial.read();
+  }
+  while (!Serial.available());
+  end_rpy(i) = Serial.parseFloat();
+  Serial.println(end_rpy(i));
+
+}
+
+void print_euler_angles(Eigen::Vector3d eul_ang) {
+    Serial.print(eul_ang(0));
+    Serial.print(", ");
+    Serial.print(eul_ang(1));
+    Serial.print(", ");
+    Serial.print(eul_ang(2));
+  }
+
+void traj_plan(Eigen::Vector3d &start_rpy, Eigen::Vector3d &end_rpy, std::vector<Eigen::Vector3d> &vec_list)
+  {
+      struct Quaternion start_quat, end_quat;
+      start_quat = to_quaternion(start_rpy);
+      end_quat = to_quaternion(end_rpy);
+      end_quat = q_mult(end_quat, start_quat);
+      end_rpy = to_euler_angles(end_quat);
+
+      Serial.print("Start euler angles: ");
+      print_euler_angles(start_rpy);
+      Serial.print("\n");
+
+      Serial.print("End euler angles: ");
+      print_euler_angles(end_rpy);
+      Serial.print("\n");
+
+      struct Quaternion interpolated_quat;
+      Eigen::Vector3d interpolated_rpy;
+      
+      int num_points = 10;
+      for (int i = 0; i <= num_points; i++)
+      {
+          double t = i / (double) num_points;
+          interpolated_quat = q_slerp(start_quat, end_quat, t);
+          interpolated_rpy = to_euler_angles(interpolated_quat);
+          // vec_list.push_back(euler2rotm(interpolated_rpy)*p_vec);   //Uncomment to record the pointer for graphing
+          vec_list.push_back(interpolated_rpy);                      //Uncomment to record RPY angles for Inverse Kinematics 
+          
+      }
+      start_rpy = end_rpy;
+    }
+
+Eigen::Vector3d start_rpy(0, 0, 0);
 Eigen::Vector3d p_vec(0,0,1);
 
 void setup() {
@@ -166,105 +232,39 @@ void setup() {
 }
 
 void loop() {
-  
-  //Ask user for end euler angles
-  Serial.println("Enter end euler angles (roll, pitch, yaw):");
-  Serial.print("Roll: ");
-  //Clear the input buffer
-  while (Serial.available()) {
-      Serial.read();
-  }
-  while (!Serial.available());
-  end_rpy(0) = Serial.parseFloat();
-  Serial.println(end_rpy(0));
-  //Clear the input buffer
-  while (Serial.available()) {
-      Serial.read();
-  }
-  Serial.print("Pitch: ");
-  while (!Serial.available());
-  end_rpy(1) = Serial.parseFloat();
-  Serial.println(end_rpy(1));
-  //Clear the input buffer
-  while (Serial.available()) {
-      Serial.read();
-  }
-  Serial.print("Yaw: ");
-  while (!Serial.available());
-  end_rpy(2) = Serial.parseFloat();
-  Serial.println(end_rpy(2));
 
-  delay(500);
-
-
-  Quaternion start_quat, end_quat;
-
-  start_quat = to_quaternion(start_rpy);
-  end_quat = to_quaternion(end_rpy);
-  end_quat = q_mult(end_quat, start_quat);
-  end_rpy = to_euler_angles(end_quat);
-
-   // Print start and end euler angles
-  Serial.print("Start euler angles: ");
-  Serial.print(start_rpy(0));
-  Serial.print(", ");
-  Serial.print(start_rpy(1));
-  Serial.print(", ");
-  Serial.println(start_rpy(2));
-  Serial.print("End euler angles: ");
-  Serial.print(end_rpy(0));
-  Serial.print(", ");
-  Serial.print(end_rpy(1));
-  Serial.print(", ");
-  Serial.println(end_rpy(2));
-
-
-  Quaternion interpolated_quat;
-  Eigen::Vector3d interpolated_rpy;
-  
   std::vector<Eigen::Vector3d> vec_list;
+  Eigen::Vector3d end_rpy;
 
+  for(int i = 0; i < 3; i++){
+    get_euler_angles(i, end_rpy);
+  }
   
-  int num_points = 10;
-  for (int i = 0; i <= num_points; i++)
-    {
-      double t = i / (double) num_points;
-      interpolated_quat = q_slerp(start_quat, end_quat, t);
-      interpolated_rpy = to_euler_angles(interpolated_quat);
-      // vec_list.push_back(euler2rotm(interpolated_rpy)*p_vec);   //Uncomment to record the pointer for graphing
-      vec_list.push_back(interpolated_rpy);                      //Uncomment to record RPY angles for Inverse Kinematics 
-        
-    }
+  traj_plan(start_rpy, end_rpy, vec_list);
 
-    // Print out the list of vectors
-    for (int i = 0; i < (int) vec_list.size(); i++)
-    {
-        Serial.print("[");
-        Serial.print(vec_list[i](0),4);
-        Serial.print(", ");
-        Serial.print(vec_list[i](1),4);
-        Serial.print(", ");
-        Serial.print(vec_list[i](2),4);
-        Serial.println("],");
-    }
+  // Print out the list of vectors
+  for (int i = 0; i < (int) vec_list.size(); i++)
+  {
+    Serial.print("[");
+    print_euler_angles(vec_list[i]);
+    Serial.println("],");
+  }
 
-    start_rpy = end_rpy;
+  // Ask if want to continue
+  Serial.println("Continue? (y/n)");
+  //Clear the input buffer
+  while (Serial.available()) {
+      Serial.read();
+  }
+  while (!Serial.available());
+  char c = Serial.read();
 
-    // Ask if want to continue
-    Serial.println("Continue? (y/n)");
-    //Clear the input buffer
-    while (Serial.available()) {
-        Serial.read();
-    }
-    while (!Serial.available());
-    char c = Serial.read();
-
-    if (c != 'y'){
-      Serial.print("End");
-      while(1){} // Wait forever
-    }
-    else{
-      vec_list.clear();
-    }
+  if (c != 'y'){
+    Serial.print("End");
+    while(1){} // Wait forever
+  }
+  else{
+    vec_list.clear();
+  }
     
 }
