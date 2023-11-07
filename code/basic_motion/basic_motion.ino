@@ -3,6 +3,9 @@
 // Include the necessary libraries for each motor
 #include <TMC2208Stepper.h>
 
+void pitch_motion(float rounds, char c);
+void roll_motion(float rounds,  char c, int actuator);
+
 #define MICRO_STEPS 16
 #define REV_STEPS 400
 
@@ -120,61 +123,93 @@ void setup() {
 
 void loop() {
   // Control each motor by toggling the STEP_PIN
-  int n = REV_STEPS * MICRO_STEPS * 2 * 16;
-  // digitalWrite(DIR_PIN_A1P, LOW);
-  // digitalWrite(DIR_PIN_A2P, LOW);
-  // for(int i = 0; i<=n; i++)       // A1 Pitch motor
-  // {
-  //   digitalWrite(STEP_PIN_A1P, !digitalRead(STEP_PIN_A1P));
-  //   digitalWrite(STEP_PIN_A2P, !digitalRead(STEP_PIN_A2P));
-  //   delayMicroseconds(50);
-  // }
 
-  // digitalWrite(DIR_PIN_A1P, HIGH);
-  // digitalWrite(DIR_PIN_A2P, HIGH);
-  // delayMicroseconds(500);
+  pitch_motion(0.5, 'c');
+  delay(500);
+  pitch_motion(0.5, 'a');
+  delay(500);
+
+  roll_motion(1, 'c', 1);
+  delay(500);
+  roll_motion(1, 'a', 1);
   
-  // for(int i = 0; i<=n; i++)       // A1 Pitch motor
-  // {
-  //   digitalWrite(STEP_PIN_A1P, !digitalRead(STEP_PIN_A1P));
-  //   digitalWrite(STEP_PIN_A2P, !digitalRead(STEP_PIN_A2P));
-  //   delayMicroseconds(50);
-  // }
-  // delayMicroseconds(500);
-  n = REV_STEPS * MICRO_STEPS * 2; 
-  for(int i = 0; i<=n; i++)       // A1 Roll motor
-  {
-    digitalWrite(STEP_PIN_A1R, !digitalRead(STEP_PIN_A1R));
-    delayMicroseconds(100);
-  }
-  // delayMicroseconds(500);
-  // n = 5000;
-  // for(int i = 0; i<=n; i++)       // A2 Roll Motor
-  // {
-  //   digitalWrite(STEP_PIN_A2R, !digitalRead(STEP_PIN_A2R));
-  //   delayMicroseconds(100);
-  // }
-  // delayMicroseconds(500);
-  // n = 20000;
-  // for(int i = 0; i<=n; i++)       // A2 Pitch motor
-  // {
-  //   digitalWrite(STEP_PIN_A2P, !digitalRead(STEP_PIN_A2P));
-  //   delayMicroseconds(50);
-  // }
+  roll_motion(1, 'c', 2);
+  delay(500);
+  roll_motion(1, 'a', 2);
 
   delay(2000);
 
-  // while(10*n>0){
-  //   digitalWrite(STEP_PIN_A1P, !digitalRead(STEP_PIN_A1P));
-  //   digitalWrite(STEP_PIN_A1R, !digitalRead(STEP_PIN_A1R));
-  //   digitalWrite(STEP_PIN_A2R, !digitalRead(STEP_PIN_A2R));
-  //   digitalWrite(STEP_PIN_A2P, !digitalRead(STEP_PIN_A2P));
-  //   // Adjust the delay as needed to control the speed of the motors
-  //   delayMicroseconds(100);
-  //   n--;
-  // }
-  // while(true){
-  //   continue;
-  // }
   
+}
+
+void pitch_motion(float rounds, char c)
+{
+  int n = REV_STEPS * MICRO_STEPS * 2 * 16 * rounds*2;
+  if (c == 'c')
+  {
+    digitalWrite(DIR_PIN_A1P, LOW);
+    digitalWrite(DIR_PIN_A2P, HIGH);
+    for(int i = 0; i<=n; i++)       // A1 Pitch motor
+    {
+      digitalWrite(STEP_PIN_A1P, !digitalRead(STEP_PIN_A1P));
+      digitalWrite(STEP_PIN_A2P, !digitalRead(STEP_PIN_A2P));
+      delayMicroseconds(50);
+    }
+  }
+  else if (c == 'a')
+  {
+    digitalWrite(DIR_PIN_A1P, HIGH);
+    digitalWrite(DIR_PIN_A2P, LOW);
+    
+    for(int i = 0; i<=n; i++)       // A1 Pitch motor
+    {
+      digitalWrite(STEP_PIN_A1P, !digitalRead(STEP_PIN_A1P));
+      digitalWrite(STEP_PIN_A2P, !digitalRead(STEP_PIN_A2P));
+      delayMicroseconds(50);
+    }
+  }
+}
+
+void roll_motion(float rounds,  char c, int actuator)
+{
+  int n = REV_STEPS * MICRO_STEPS * 2 * rounds;
+
+  if (actuator == 1)
+  {
+    if (c == 'c'){
+      digitalWrite(DIR_PIN_A1P, LOW);
+      digitalWrite(DIR_PIN_A1R, LOW);
+    } else if(c == 'a')
+    {
+      digitalWrite(DIR_PIN_A1P, HIGH);
+      digitalWrite(DIR_PIN_A1R, HIGH);
+    }
+    
+    delay(500);
+    for(int i = 0; i<=n; i++)       // A1 Roll motor
+    {
+      digitalWrite(STEP_PIN_A1R, !digitalRead(STEP_PIN_A1R));
+      digitalWrite(STEP_PIN_A1P, !digitalRead(STEP_PIN_A1P));   // same direction no motion for monopole
+      delayMicroseconds(500);
+    }
+
+  } else if (actuator == 2)
+  {
+    if (c == 'c'){
+      digitalWrite(DIR_PIN_A2P, LOW);
+      digitalWrite(DIR_PIN_A2R, LOW);
+    } else if(c == 'a')
+    {
+      digitalWrite(DIR_PIN_A2P, HIGH);
+      digitalWrite(DIR_PIN_A2R, HIGH);
+    }
+    
+    delay(500);
+    for(int i = 0; i<=n; i++)       // A1 Roll motor
+    {
+      digitalWrite(STEP_PIN_A2R, !digitalRead(STEP_PIN_A2R));
+      digitalWrite(STEP_PIN_A2P, !digitalRead(STEP_PIN_A2P));   // same direction no motion for monopole
+      delayMicroseconds(500);
+    }
+  }
 }
