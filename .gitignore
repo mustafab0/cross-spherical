@@ -1,4 +1,4 @@
-
-*.stl
+.vscode/
+CAD/
 *.mp4
 *.json
