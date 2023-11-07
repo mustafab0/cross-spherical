@@ -205,26 +205,38 @@ start_rpy = EulerAngles(0, 0, 0)
 
 cont = 'y'
 
+# This code takes in a list of euler angles and plots the vectors for each euler angle in 3D space
+# The vectors are plotted with the origin at the at [0,0,0]
+# The vectors are plotted in the order they are in the list
+# The vectors are plotted with the x-axis in red, the y-axis in green, and the z-axis in blue
+# The vectors are plotted in a 3D plot and the plot is shown at the end of the code
+
 while cont == 'y':
+    # Get user input for roll, pitch, and yaw
     rpy = np.array([float(input("Enter roll: ")), float(input("Enter pitch: ")), float(input("Enter yaw: "))])
     print("input rpy: ", rpy)
+    
+    # Convert input Euler angles to EulerAngles object
     end_rpy = EulerAngles(rpy[0], rpy[1], rpy[2])
-    # end_rpy = EulerAngles(start_rpy.roll + rpy[0], start_rpy.pitch + rpy[1], start_rpy.yaw + rpy[2])
+    
+    # Convert input Euler angles to quaternion
     start_quat = to_quaternion(start_rpy)
     end_quat = to_quaternion(end_rpy)
+    
+    # Perform quaternion multiplication to get the final quaternion
     end_quat = q_mult(end_quat, start_quat)
+    
+    # Convert final quaternion to Euler angles
     end_rpy = to_euler_angles(end_quat)
 
-    #print start and end euler angles
+    # Print start and end Euler angles
     print("Start RPY angles: ", start_rpy.roll, start_rpy.pitch, start_rpy.yaw)
     print("End RPY angles: ", end_rpy.roll, end_rpy.pitch, end_rpy.yaw)
 
-    # #print start and end quaternions
-    # print("Start Quaternion: ", start_quat.x, start_quat.y, start_quat.z, start_quat.w)
-    # print("End Quaternion: ", end_quat.x, end_quat.y, end_quat.z, end_quat.w)
-
+    # Create lists to store vectors and RPY angles
     euls_list = [x_ax, y_ax, z_ax]
     rpy_list = []
+    
     # Perform Slerp interpolation for different values of t
     num_points = 10
     for i in range(num_points + 1):
@@ -232,22 +244,29 @@ while cont == 'y':
         interpolated_quat = quaternion_slerp(start_quat, end_quat, t)
         interpolated_rpy = to_euler_angles(interpolated_quat)
         rpy_list.append(interpolated_rpy)
-        euls_list.append(euler2rotm(np.array([interpolated_rpy.roll , interpolated_rpy.pitch , interpolated_rpy.yaw]))@z_ax)
+        euls_list.append(euler2rotm(np.array([interpolated_rpy.roll, interpolated_rpy.pitch, interpolated_rpy.yaw])) @ z_ax)
 
+    # Print the list of vectors
     print("Vector list: ")
     for vec in euls_list:
-        print("[",vec[0],",",vec[1],",",vec[2],"]",",")
-    
+        print("[", vec[0], ",", vec[1], ",", vec[2], "]", ",")
+
+    # Print the list of RPY angles
     print("RPY angles: ")
     for euls in rpy_list:
-        print("[",euls.roll,",",euls.pitch,",",euls.yaw,"]",",")
-    
+        print("[", euls.roll, ",", euls.pitch, ",", euls.yaw, "]", ",")
+
+    # Update start_rpy for the next iteration
     start_rpy = end_rpy
     plt_vec = euls_list[-1]
 
+    # Print the last vector
     print(plt_vec)
+    
+    # Plot the vectors and ask user to continue
     ax = plot_vector(euls_list)
     cont = input("Continue? (y/n): ")
+
     
 
     
