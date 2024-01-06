@@ -1,7 +1,7 @@
 {
-    "sketch": "code\\testing\\testing.ino",
+    "sketch": "code\\basic_motion\\basic_motion.ino",
     "configuration": "usb=serial,speed=600,opt=o2std,keys=en-us",
     "board": "teensy:avr:teensy40",
-    "port": "COM33",
+    "port": "COM28",
     "output": "..\\build"
 }
