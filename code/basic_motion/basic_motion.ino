@@ -4,8 +4,13 @@
 #include <TMC2208Stepper.h>
 #include <math.h>
 
-void pitch_motion(float rounds, char direction);
-void roll_motion(float rounds, int actuator);
+enum Actuator {R1 = 1, R2 = 2, P1=3 , P2=4};
+
+
+void roll_motion(float angle, int actuator);
+void pitch_motion(float angle, int actuator);
+float get_input();
+void set_home(Actuator actuator);
 
 #define MICRO_STEPS 16.
 #define REV_STEPS 400.
@@ -27,11 +32,11 @@ void roll_motion(float rounds, int actuator);
 #define DIR_PIN_P2 23
 
 TMC2208Stepper driverPitch1 = TMC2208Stepper(&Serial1);  // Create driver for motor 1 //A1 P 
-TMC2208Stepper driverRoll1 = TMC2208Stepper(&Serial1);  // Create driver for motor 2 //A1 R
-TMC2208Stepper driverRoll2 = TMC2208Stepper(&Serial1);  // Create driver for motor 3 //A2 R
+TMC2208Stepper driverRoll1  = TMC2208Stepper(&Serial1);  // Create driver for motor 2 //A1 R
+TMC2208Stepper driverRoll2  = TMC2208Stepper(&Serial1);  // Create driver for motor 3 //A2 R
 TMC2208Stepper driverPitch2 = TMC2208Stepper(&Serial1);  // Create driver for motor 4 //A2 P
 
-float current_roll1 = 0, current_roll2 = 0, current_pitch1 = 0, current_pitch2 = 0;
+float roll_angle1 = 0, roll_angle2 = 0, pitch_angle1 = 0, pitch_angle2 = 0;
 int roll1_steps = 0, roll2_steps = 0, pitch1_steps = 0, pitch2_steps = 0;
 void setup() {
   Serial.begin(9600);
@@ -127,50 +132,55 @@ void setup() {
 void loop() {
   // Control each motor by toggling the STEP_PIN
 
-  // pitch_motion(1., 'c');    // 1 rounds clockwise
-  // roll_motion(1., 'c', 1);    // 1 rounds clockwise
-  // delay(500);
-  // pitch_motion(1., 'a');    // 1 rounds anti-clockwise
-  // delay(500);
-  // get user input
-  Serial.println("Enter the angle:");
-  float angle;
-  while (Serial.available() == 0);
-  angle = Serial.parseFloat();
-  Serial.println(angle);
-  roll_motion(angle,  1);
-  Serial.println(current_roll1);
-  
-  // roll_motion(1, 'c', 2);
-  // Serial.println(current_roll2);
-  // delay(500);
-  // roll_motion(1, 'a', 2);
-  // Serial.println(current_roll2);
+  Serial.println("Enter mode:");
+  float mode = get_input();
+
+  float actuator, angle;
+
+
+  switch ((int)mode)
+  {
+    case 0:
+      Serial.println("Homing mode");
+      Serial.println("Enter actuator:");
+      actuator = get_input();
+      set_home((Actuator)actuator);
+      break;
+    case 1:
+      Serial.println("Roll mode");
+      Serial.println("Enter actuator:");
+      actuator = get_input();
+      Serial.println("Enter angle:");
+      angle = get_input();
+      roll_motion(angle, (int)actuator);
+      break;
+    case 2:
+      Serial.println("Pitch mode");
+      Serial.println("Enter actuator:");
+      actuator = get_input();
+      Serial.println("Enter angle:");
+      angle = get_input();
+      pitch_motion(angle, (int)actuator);
+      break;
+    default:
+      Serial.println("Invalid mode");
+      break;
+  }
+
+  Serial.print("Roll angle: ");
+  Serial.println(roll_angle1);
+  Serial.print("Pitch angle: ");
+  Serial.println(pitch_angle1);
+
   delay(2000);
   
 }
 
 
-void pitch_motion(float rounds, char direction)
-{
-  int n = REV_STEPS * MICRO_STEPS * 32 * rounds;     // Gear ratio = 2*8*2
-  bool dirValue = (direction == 'c') ? LOW : HIGH;
-
-  digitalWrite(DIR_PIN_P1, dirValue);
-  digitalWrite(DIR_PIN_P2, dirValue);
-
-  for(int i = 0; i<=n; i++)       // A1 Pitch motor
-  {
-    digitalWrite(STEP_PIN_P1, !digitalRead(STEP_PIN_P1));
-    digitalWrite(STEP_PIN_P2, !digitalRead(STEP_PIN_P2));
-    delayMicroseconds(50);
-  }
-}
-
 void roll_motion(float angle,  int actuator)
 {
   int n = abs(REV_STEPS * MICRO_STEPS * 2 * angle/360);     // Gear ratio = 2
-  int increment = 0;
+  int increment;
   bool dirValue = (angle < 0) ? LOW : HIGH;
   if (dirValue == LOW)
   {
@@ -195,10 +205,10 @@ void roll_motion(float angle,  int actuator)
       delayMicroseconds(250);
     }
 
-    current_roll1 = fmod(roll1_steps/MICRO_STEPS*360/REV_STEPS/2,360);
-    if (current_roll1 < 0)
-      current_roll1 += 360;
-    current_roll1 = round(current_roll1*10)/10.0;
+    roll_angle1 = fmod(roll1_steps/MICRO_STEPS*360/REV_STEPS/2,360);
+    if (roll_angle1 < 0)
+      roll_angle1 += 360;
+    roll_angle1 = round(roll_angle1*10)/10.0;
 
   } else if (actuator == 2)
   {
@@ -213,9 +223,137 @@ void roll_motion(float angle,  int actuator)
       roll2_steps += increment;
       delayMicroseconds(250);
     }
-    current_roll2 = fmod((float)roll2_steps/MICRO_STEPS*360/REV_STEPS/2, 360);
-    if (current_roll2 < 0)
-      current_roll2 += 360;
-    current_roll2 = round(current_roll2*10)/10.0;
+    roll_angle2 = fmod((float)roll2_steps/MICRO_STEPS*360/REV_STEPS/2, 360);
+    if (roll_angle2 < 0)
+      roll_angle2 += 360;
+    roll_angle2 = round(roll_angle2*10)/10.0;
   }
+  else {
+    Serial.println("Invalid actuator");
+  }
+}
+
+void pitch_motion(float angle, int actuator)
+{
+  int n = abs(REV_STEPS * MICRO_STEPS * 32 * angle/360);     // Gear ratio = 2*8*2
+  bool dirValue = (angle < 0) ? LOW : HIGH;
+  int increment;
+  if (dirValue == LOW)
+  {
+    Serial.println("Clockwise");
+    increment = -1;
+  } else {
+    Serial.println("Anti-clockwise");
+    increment = 1;
+  }
+
+  digitalWrite(DIR_PIN_P1, dirValue);
+  digitalWrite(DIR_PIN_P2, !dirValue);
+
+  delay(500);
+
+  if(actuator == 1)
+  {
+    for(int i = 0; i<=n; i++)       // A1 Pitch motor
+    {
+      digitalWrite(STEP_PIN_P1, !digitalRead(STEP_PIN_P1));
+      pitch1_steps += increment;
+      delayMicroseconds(50);
+    }
+    pitch_angle1 = fmod(pitch1_steps/MICRO_STEPS*360/REV_STEPS/32,360);
+    if (pitch_angle1 < 0)
+      pitch_angle1 += 360;
+    pitch_angle1 = round(pitch_angle1*10)/10.0;
+  }
+  else if(actuator==2)
+  {
+    for(int i = 0; i<=n; i++)       // A2 Pitch motor
+    {
+      digitalWrite(STEP_PIN_P2, !digitalRead(STEP_PIN_P2));
+      pitch2_steps += increment;
+      delayMicroseconds(50);
+    }
+    pitch_angle2 = fmod(pitch2_steps/MICRO_STEPS*360/REV_STEPS/32,360);
+    if (pitch_angle2 < 0)
+      pitch_angle2 += 360;
+    pitch_angle2 = round(pitch_angle2*10)/10.0;
+  }
+  else {
+    for(int i = 0; i<=n; i++)       // A2 Pitch motor
+    {
+      digitalWrite(STEP_PIN_P1, !digitalRead(STEP_PIN_P1));
+      pitch1_steps += increment;
+      digitalWrite(STEP_PIN_P2, !digitalRead(STEP_PIN_P2));
+      pitch2_steps += increment;
+      delayMicroseconds(50);
+    }
+    pitch_angle1 = fmod(pitch1_steps/MICRO_STEPS*360/REV_STEPS/32,360);
+    if (pitch_angle1 < 0)
+      pitch_angle1 += 360;
+    pitch_angle1 = round(pitch_angle1*10)/10.0;
+
+    pitch_angle2 = fmod(pitch2_steps/MICRO_STEPS*360/REV_STEPS/32,360);
+    if (pitch_angle2 < 0)
+      pitch_angle2 += 360;
+    pitch_angle2 = round(pitch_angle2*10)/10.0;
+  }
+  
+}
+
+
+float get_input()
+{
+  float input;
+  while (Serial.available() == 0);
+  input = Serial.parseFloat();
+  return input;
+}
+
+
+void set_home(Actuator actuator) {
+    Serial.println("Set home position ");
+    float adjust = get_input();
+
+    if (adjust != 0) {
+        switch (actuator) {
+            case R1:
+                roll_motion(adjust, 1);
+                break;
+            case R2:
+                roll_motion(adjust, 2);
+                break;
+            case P1:
+                pitch_motion(adjust, 1);
+                break;
+            case P2:
+                pitch_motion(adjust, 2);
+                break;
+            default:
+                Serial.println("Invalid actuator");
+                return;
+        }
+        set_home(actuator);
+    } else {
+        switch (actuator) {
+            case R1:
+                roll_angle1 = 0;
+                roll1_steps = 0;
+                break;
+            case R2:
+                roll_angle2 = 0;
+                roll2_steps = 0;
+                break;
+            case P1:
+                pitch_angle1 = 0;
+                pitch1_steps = 0;
+                break;
+            case P2:
+                pitch_angle2 = 0;
+                pitch2_steps = 0;
+                break;
+            default:
+                Serial.println("Invalid actuator");
+                return;
+        }
+    }
 }
