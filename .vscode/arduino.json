@@ -1,7 +1,7 @@
 {
-    "sketch": "code\\trajectory\\trajectory.ino",
+    "sketch": "code\\basic_motion2\\basic_motion2.ino",
     "configuration": "usb=serial,speed=600,opt=o2std,keys=en-us",
     "board": "teensy:avr:teensy40",
-    "port": "COM33",
+    "port": "COM28",
     "output": "..\\build"
 }
