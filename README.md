@@ -1,13 +1,14 @@
 # Cross Spherical gear actuation
 
-##Original work here:<p align="center">
+#### Original work here:
+<p align="center">
   <a href="https://www.youtube.com/watch?v=hhDdfiRCQS4">
     <img src="https://i.ytimg.com/an_webp/hhDdfiRCQS4/mqdefault_6s.webp?du=3000&sqp=COzZvKUG&rs=AOn4CLA3J-dkEpdE3YvnwDObh-YkiyPLpw" alt="ABENICS: Active Ball Joint Mechanism With Three-DoF Based on Spherical Gear Meshings" width="240" height="180"><br>
     Watch the original work on youtube.
   </a>
 </p>
 
-# Our implementation 
+# My implementation 
 This project involves the use of 3D printing to create various components. The project's centerpiece is the cross-spherical gear, driven by two actuators, each equipped with two motors. While the original design utilized Brushless DC motors from Maxon Motor Inc, this project opts for NEMA17 stepper motors to reduce cost and complexity. The stepper motors are controlled using TMC2208 stepper motor drivers, which are interfaced with Teensy4.0.
 
 <p align="center">
