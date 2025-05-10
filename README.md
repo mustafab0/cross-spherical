@@ -1,11 +1,6 @@
 # Cross Spherical gear actuation
 
 <p align="center">
-  <img src="images/ABENICS.png" alt="ABENICS, The original implementation" width="400" height="350"><br>
-  ABENICS, The original design for cross-spherical gear and its actuators.
-</p>
-
-<p align="center">
   <a href="https://www.youtube.com/watch?v=hhDdfiRCQS4">
     <img src="https://i.ytimg.com/an_webp/hhDdfiRCQS4/mqdefault_6s.webp?du=3000&sqp=COzZvKUG&rs=AOn4CLA3J-dkEpdE3YvnwDObh-YkiyPLpw" alt="ABENICS: Active Ball Joint Mechanism With Three-DoF Based on Spherical Gear Meshings" width="240" height="180"><br>
     Watch the original work on youtube.
