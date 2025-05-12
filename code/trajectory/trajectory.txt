@@ -1,1 +1,0 @@
-The trajectory planner for to plan a path for the target position from the current position
