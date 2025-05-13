@@ -2,3 +2,5 @@
 CAD/
 *.mp4
 *.json
+**/build
+tests/hardware/acstep/build/

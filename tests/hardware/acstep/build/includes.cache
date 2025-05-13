@@ -1,0 +1,27 @@
+[
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "/home/agentv/.arduino15/packages/teensy/hardware/avr/1.59.0/cores/teensy4"
+  },
+  {
+    "Sourcefile": "/home/agentv/cross-spherical/tests/hardware/acstep/build/sketch/acstep.ino.cpp",
+    "Include": "AccelStepper.h",
+    "Includepath": "/home/agentv/Arduino/libraries/AccelStepper/src"
+  },
+  {
+    "Sourcefile": "/home/agentv/cross-spherical/tests/hardware/acstep/build/sketch/acstep.ino.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/agentv/Arduino/libraries/AccelStepper/src/AccelStepper.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/agentv/Arduino/libraries/AccelStepper/src/MultiStepper.cpp",
+    "Include": "",
+    "Includepath": null
+  }
+]
