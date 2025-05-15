@@ -38,6 +38,10 @@ const float durations1[] = {
   280, 280, 280, 280, 280, 280, 500
 };
 
+// === Stanza 2 ===
+const float rollDegrees2[] = { 0, 90, -90, 0 };
+const float durations2[] = { 400, 400, 400 };
+
 // === Add more stanzas below as needed ===
 // const float rollDegrees2[] = { ... };
 // const float durations2[] = { ... };
@@ -51,7 +55,8 @@ struct Stanza {
 
 // === All Stanzas ===
 Stanza stanzas[] = {
-  { rollDegrees1, durations1, sizeof(rollDegrees1) / sizeof(float) }
+  { rollDegrees1, durations1, sizeof(rollDegrees1) / sizeof(float) },
+  { rollDegrees2, durations2, sizeof(rollDegrees2)/ sizeof(float)}
   // Add more: { rollDegrees2, durations2, N }
 };
 
@@ -73,7 +78,7 @@ void setup() {
 
   steppers.addStepper(stepper1);
   steppers.addStepper(stepper3);
-  
+
 }
 
 void loop() {
