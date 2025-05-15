@@ -96,6 +96,10 @@ void setup() {
   // Configure stepper parameters
   stepper3.setAcceleration(10000); // High enough to be instant
   stepper3.setMaxSpeed(25000);     // Allow high-speed moves
+  
+  steppers.addStepper(stepper1);
+  steppers.addStepper(stepper3);
+
 }
 
 void loop() {
@@ -112,6 +116,8 @@ void loop() {
     // Apply direction to speed
     if (deltaDeg < 0) speedStepsPerSec *= -1;
 
+    stepper1.moveTo(degNext * STEPS_PER_DEGREE);
+    stepper1.setSpeed(speedStepsPerSec);
     stepper3.moveTo(degNext * STEPS_PER_DEGREE);
     stepper3.setSpeed(speedStepsPerSec);
 
@@ -119,7 +125,7 @@ void loop() {
   }
 
   if (isMoving) {
-    stepper3.runSpeedToPosition();
+    steppers.runSpeedToPosition();
 
     if (stepper3.distanceToGo() == 0) {
       delay(100);
