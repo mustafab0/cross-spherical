@@ -33,14 +33,14 @@ const float rollDegrees1[] = {
 };
 
 const float durations1[] = {
-  280, 280, 280, 280, 280, 280, 500,
-  280, 280, 280, 280, 280, 280, 500,
-  280, 280, 280, 280, 280, 280, 500
+  250, 250, 250, 250, 250, 250, 500,
+  250, 250, 250, 250, 250, 250, 500,
+  250, 250, 250, 250, 250, 250, 500
 };
 
 // === Stanza 2 ===
-const float rollDegrees2[] = { 0, 90, -90, 0 };
-const float durations2[] = { 400, 400, 400 };
+const float rollDegrees2[] = { 0, -360};
+const float durations2[] = { 3000 };
 
 // === Add more stanzas below as needed ===
 // const float rollDegrees2[] = { ... };
