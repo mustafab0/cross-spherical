@@ -90,12 +90,15 @@ void setup() {
   pinMode(EN_PIN_R2, OUTPUT);
   digitalWrite(EN_PIN_R2, LOW);
 
-  pinMode(EN_PIN_P2, OUTPUT);
-  digitalWrite(EN_PIN_P2, LOW);
+  pinMode(EN_PIN_R1, OUTPUT);
+  digitalWrite(EN_PIN_R1, LOW);
 
   // Configure stepper parameters
   stepper3.setAcceleration(10000); // High enough to be instant
   stepper3.setMaxSpeed(25000);     // Allow high-speed moves
+
+  stepper1.setAcceleration(10000); // High enough to be instant
+  stepper1.setMaxSpeed(25000);     // Allow high-speed moves
   
   steppers.addStepper(stepper1);
   steppers.addStepper(stepper3);
