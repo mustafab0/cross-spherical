@@ -1,4 +1,5 @@
 #include <AccelStepper.h>
+#include <MultiStepper.h>
 
 // Motor pin definitions
 #define EN_PIN_P1 9
@@ -23,7 +24,10 @@ AccelStepper stepper2(AccelStepper::DRIVER, STEP_PIN_P1, DIR_PIN_P1); // Pitch 1
 AccelStepper stepper3(AccelStepper::DRIVER, STEP_PIN_R2, DIR_PIN_R2); // Roll 2
 AccelStepper stepper4(AccelStepper::DRIVER, STEP_PIN_P2, DIR_PIN_P2); // Pitch 2
 
-const float STEPS_PER_DEGREE = 17.78;
+MultiStepper steppers;
+
+const float STEPS_PER_DEGREE_ROLL = 17.78;
+const float STEPS_PER_DEGREE_PITCH = 284.45;
 
 // === Stanza 1 ===
 const float roll1_1[] = {
@@ -57,11 +61,29 @@ const float durations1[] = {
 };
 
 // === Stanza 2 Example (short move for test) ===
-const float roll1_2[] = { 0, 90 };
-const float roll2_2[] = { 0, 90 };
-const float pitch1_2[] = { 0, 30 };
-const float pitch2_2[] = { 0, -30 };
-const float durations2[] = { 3000 };
+const float roll1_2[] = { 0, 0 };
+const float roll2_2[] = { 0, 0 };
+const float pitch1_2[] = { 0, 180 };
+const float pitch2_2[] = { 0, -180 };
+const float durations2[] = { 2500 };
+
+// === Stanza 3 Example (short move for test) ===
+const float roll1_3[] = { 0, 180, 0, 360, 0};
+const float roll2_3[] = { 0, 180, 0, 360, 0 };
+const float pitch1_3[] = { 0, -150, 0, -150, 0 };
+const float pitch2_3[] = { 0, 150, 0, -150, 0 };
+const float durations3[] = { 2500 , 2500 , 2500 , 3300 };
+
+// === Stanza 3 Example (short move for test) ===
+const float roll1_4[] = { 0, 360, 0, 360, 0};
+const float roll2_4[] = { 0, 360, 0, 360, 0 };
+const float pitch1_4[] = { 0, -150, 0, -150, 0 };
+const float pitch2_4[] = { 0, 150, 0, -150, 0 };
+const float durations4[] = { 2500 , 2500 , 2500 , 3000 };
+
+
+
+
 
 // === Stanza Struct ===
 struct Stanza {
@@ -77,7 +99,9 @@ struct Stanza {
 // === All Stanzas ===
 Stanza stanzas[] = {
   { roll1_1, roll2_1, pitch1_1, pitch2_1, durations1, sizeof(roll1_1) / sizeof(float), false },
-  { roll1_2, roll2_2, pitch1_2, pitch2_2, durations2, sizeof(roll1_2) / sizeof(float), false }
+  { roll1_2, roll2_2, pitch1_2, pitch2_2, durations2, sizeof(roll1_2) / sizeof(float), false },
+  { roll1_3, roll2_3, pitch1_3, pitch2_3, durations3, sizeof(roll1_3) / sizeof(float), false },
+  { roll1_4, roll2_4, pitch1_4, pitch2_4, durations4, sizeof(roll1_4) / sizeof(float), false }
 };
 
 const int numStanzas = sizeof(stanzas) / sizeof(Stanza);
@@ -95,8 +119,13 @@ void setup() {
 
   for (auto& s : { &stepper1, &stepper2, &stepper3, &stepper4 }) {
     s->setAcceleration(10000);
-    s->setMaxSpeed(25000);
+    s->setMaxSpeed(20000);
   }
+
+  steppers.addStepper(stepper1);
+  steppers.addStepper(stepper3);
+  steppers.addStepper(stepper2);
+  steppers.addStepper(stepper4);
 }
 
 void loop() {
@@ -110,37 +139,41 @@ void loop() {
     float degNow1 = s.drv1Roll[currentStep];
     float degNext1 = s.drv1Roll[currentStep + 1];
     float delta1 = degNext1 - degNow1;
-    float spd1 = (delta1 * STEPS_PER_DEGREE) / d;
-    stepper1.moveTo(degNext1 * STEPS_PER_DEGREE);
+    float spd1 = (delta1 * STEPS_PER_DEGREE_ROLL) / d;
+    stepper1.moveTo(degNext1 * STEPS_PER_DEGREE_ROLL);
     stepper1.setSpeed(spd1);
 
     float degNow2 = s.drv2Roll[currentStep];
     float degNext2 = s.drv2Roll[currentStep + 1];
     float delta2 = degNext2 - degNow2;
-    float spd2 = (delta2 * STEPS_PER_DEGREE) / d;
-    stepper3.moveTo(degNext2 * STEPS_PER_DEGREE);
+    float spd2 = (delta2 * STEPS_PER_DEGREE_ROLL) / d;
+    stepper3.moveTo(degNext2 * STEPS_PER_DEGREE_ROLL);
     stepper3.setSpeed(spd2);
 
     float pNow1 = s.drv1Pitch[currentStep];
     float pNext1 = s.drv1Pitch[currentStep + 1];
-    float pSpd1 = ((pNext1 - pNow1) * STEPS_PER_DEGREE) / d;
-    stepper2.moveTo(pNext1 * STEPS_PER_DEGREE);
+    float pSpd1 = ((pNext1 - pNow1) * STEPS_PER_DEGREE_PITCH) / d;
+    stepper2.moveTo(pNext1 * STEPS_PER_DEGREE_PITCH);
     stepper2.setSpeed(pSpd1);
 
     float pNow2 = s.drv2Pitch[currentStep];
     float pNext2 = s.drv2Pitch[currentStep + 1];
-    float pSpd2 = ((pNext2 - pNow2) * STEPS_PER_DEGREE) / d;
-    stepper4.moveTo(pNext2 * STEPS_PER_DEGREE);
+    float pSpd2 = ((pNext2 - pNow2) * STEPS_PER_DEGREE_PITCH) / d;
+    stepper4.moveTo(pNext2 * STEPS_PER_DEGREE_PITCH);
     stepper4.setSpeed(pSpd2);
+
+
 
     isMoving = true;
   }
 
   if (isMoving) {
-    stepper1.runSpeedToPosition();
-    stepper2.runSpeedToPosition();
-    stepper3.runSpeedToPosition();
-    stepper4.runSpeedToPosition();
+    // stepper1.runSpeedToPosition();
+    // stepper2.runSpeedToPosition();
+    // stepper3.runSpeedToPosition();
+    // stepper4.runSpeedToPosition();
+    
+    steppers.runSpeedToPosition();
 
 
     if (stepper1.distanceToGo() == 0 &&
