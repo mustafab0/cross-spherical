@@ -75,10 +75,10 @@ const float pitch2_3[] = { 0, 150, 0, -150, 0 };
 const float durations3[] = { 2500 , 2500 , 2500 , 3300 };
 
 // === Stanza 3 Example (short move for test) ===
-const float roll1_4[] = { 0, 360, 0, 360, 0};
-const float roll2_4[] = { 0, 360, 0, 360, 0 };
+const float roll1_4[] = { 0, 0, 0, 0, 360};
+const float roll2_4[] = { 0, 0, 0, 0, 360 };
 const float pitch1_4[] = { 0, -150, 0, -150, 0 };
-const float pitch2_4[] = { 0, 150, 0, -150, 0 };
+const float pitch2_4[] = { 0, -150, 0, -150, 0 };
 const float durations4[] = { 2500 , 2500 , 2500 , 3000 };
 
 
@@ -168,12 +168,12 @@ void loop() {
   }
 
   if (isMoving) {
-    // stepper1.runSpeedToPosition();
-    // stepper2.runSpeedToPosition();
-    // stepper3.runSpeedToPosition();
-    // stepper4.runSpeedToPosition();
+     stepper1.runSpeedToPosition();
+     stepper2.runSpeedToPosition();
+     stepper3.runSpeedToPosition();
+     stepper4.runSpeedToPosition();
     
-    steppers.runSpeedToPosition();
+     //steppers.runSpeedToPosition();
 
 
     if (stepper1.distanceToGo() == 0 &&
